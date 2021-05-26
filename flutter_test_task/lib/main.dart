@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import "numbersList.dart";
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
@@ -30,7 +34,9 @@ class _RandomNumberState extends State<RandomNumber> {
   final String apiUrl = "https://csrng.net/csrng/csrng.php?min=1&max=100";
   String randomNumberText = '';
   List<int> numbers = [];
-  Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+  CollectionReference randomNumbers =
+      FirebaseFirestore.instance.collection('numbers');
 
   Future<int> fetchNumber() async {
     var result = await http.get(apiUrl);
@@ -39,10 +45,24 @@ class _RandomNumberState extends State<RandomNumber> {
 
   void onClick() async {
     int randomNumber = await fetchNumber();
+    randomNumbers
+        .add({
+          'number': randomNumber,
+          'timeStamp': DateTime.now(),
+        })
+        .then((value) => print("numbers Added"))
+        .catchError((error) => print("Failed to add number: $error"));
     setState(() {
       numbers.add(randomNumber);
       randomNumberText = randomNumber.toString();
     });
+  }
+
+  void onNavigateClick() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => NumberList()),
+    );
   }
 
   @override
@@ -58,6 +78,16 @@ class _RandomNumberState extends State<RandomNumber> {
               child: TextButton(
                 onPressed: onClick,
                 child: Text("Generate random number",
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ),
+            Container(
+              color: Colors.black,
+              height: 50,
+              margin: EdgeInsets.only(top: 10),
+              child: TextButton(
+                onPressed: onNavigateClick,
+                child: Text("Show all numbers",
                     style: TextStyle(color: Colors.white)),
               ),
             ),
